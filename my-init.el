@@ -1,3 +1,6 @@
+(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+(add-to-list 'default-frame-alist '(ns-appearance . dark))
+
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
 (require 'ibuffer)
@@ -157,22 +160,19 @@
   (next-buffer)
   (when (string= (buffer-name) "*Ibuffer*") (next-buffer)))
 
-(defun comment-dwim-line-or-toggle-term-mode (&optional arg)
+(defun comment-dwim-line (&optional arg)
   "Replacement for the comment-dwim command.
     If no region is selected and current line is not blank and we are not at the end of the line,
     then comment current line.
-    Replaces default behaviour of comment-dwim, when it inserts comment at the end of the line.
-    Also, toggles between term-line-mode and term-char-mode in multi-term"
+    Replaces default behaviour of comment-dwim, when it inserts comment at the end of the line."
   (interactive "*P")
-  (if (equal 'term-mode major-mode)
-      (if (term-in-line-mode)
-          (progn (term-char-mode) (message "CHAR MODE"))
-        (term-line-mode) (message "LINE MODE"))
-
-    (comment-normalize-vars)
-    (if (and (not (region-active-p)) (not (looking-at "[ \t]*$")))
-        (comment-or-uncomment-region (line-beginning-position) (line-end-position))
-      (comment-dwim arg))))
+  (case major-mode
+    ('magit-mode (evil-magit-toggle-text-mode))
+    (t
+     (comment-normalize-vars)
+     (if (and (not (region-active-p)) (not (looking-at "[ \t]*$")))
+         (comment-or-uncomment-region (line-beginning-position) (line-end-position))
+       (comment-dwim arg)))))
 
 (defun gcs-toggle-tab-width-setting ()
   "Toggle setting tab widths between 4 and 8"
@@ -208,48 +208,49 @@
 
 
 (defconst gcs-prefix-key-commands
-  (mapcar
-   (lambda (binding) (list (read-kbd-macro (first binding)) (second binding)))
-   '(("q"   quit-window)
-     ("k"   gcs-kill-buffer-command)
-     ("s-k" delete-window)
-     ("K"   gcs-kill-buffer-and-window)
-     ("g"   magit-status)
-     ("l"   magit-file-log)
-     ("u"   undo-tree-visualize)
-     ("a"   helm-projectile-ag)
+  (map2
+   (lambda (key cmd) (list (read-kbd-macro key) cmd))
+   '("q"   quit-window
+     "k"   gcs-kill-buffer-command
+     "s-k" delete-window
+     "K"   gcs-kill-buffer-and-window
+     "g"   magit-status
+     "l"   magit-log-buffer-file-popup
+     "u"   undo-tree-visualize
+     "a"   helm-projectile-ag
+     "x"   helm-M-x
 
-     ("d"   helm-projectile-find-file)
-     ("f"   spacemacs/helm-find-files)
-     ;; ("F"   ido-find-alternate-file)
-     ("s-f" gcs-show-in-finder)
-     ("s-x" gcs-open-with-external-editor)
+     "d"   helm-projectile-find-file
+     "f"   spacemacs/helm-find-files
+     ; "F"   ido-find-alternate-file
+     "s-f" gcs-show-in-finder
+     "s-x" gcs-open-with-external-editor
 
-     ("w" save-buffer)
-     ("W" write-file)
-     ("b" ibuffer)
-     ("v" helm-mini)
-                                        ; ("V" ido-switch-buffer-other-frame)
+     "w" save-buffer
+     "W" write-file
+     "b" ibuffer
+     "v" helm-mini
+     ; ("V" ido-switch-buffer-other-frame)
 
-     ("s-v" visual-line-mode)
-     ("s-b" magit-blame-mode)
+     "s-v" visual-line-mode
+     "s-b" magit-blame
 
-                                        ; ("c" gcs-compile)
-     ("e" next-error)
-     ("E" previous-error)
-     ("r" eval-buffer)
+     ; ("c" gcs-compile)
+     "e" next-error
+     "E" previous-error
+     "r" eval-buffer
 
-     ("0" delete-window)
-     ("7" delete-window)
-     ("1" delete-other-windows)
-     ("2" split-window-vertically)
-     ("3" split-window-horizontally)
-     ("4" balance-windows)
+     "0" delete-window
+     "7" delete-window
+     "1" delete-other-windows
+     "2" split-window-vertically
+     "3" split-window-horizontally
+     "4" balance-windows
 
-     ("<left>"  gcs-previous-buffer)
-     ("<right>" gcs-next-buffer)
-     ("\\"      comment-dwim-line-or-toggle-term-mode)
-     ("s-t"     gcs-toggle-tab-width-setting))))
+     "<left>"  gcs-previous-buffer
+     "<right>" gcs-next-buffer
+     "\\"      comment-dwim-line
+     "s-t"     gcs-toggle-tab-width-setting)))
 
 (defun gcs-prefix-key-command ()
   (interactive)
@@ -323,3 +324,30 @@
 (key-chord-define-global "j;" 'gcs-eval-dwim)
 (key-chord-define-global "k;" 'eval-defun)
 (key-chord-define-global "l;" 'eval-expression)
+
+
+
+
+(defun gcs-helm-config ()
+  (define-key helm-map (kbd "s-j") 'helm-next-line)
+  (define-key helm-map (kbd "s-k") 'helm-previous-line)
+  (define-key helm-find-files-map (kbd "RET") 'helm-execute-persistent-action))
+(eval-after-load "helm" #'gcs-helm-config)
+
+(defun gcs-magit-config ()
+  (magit-add-section-hook 'magit-status-sections-hook 'magit-insert-recent-commits 'magit-insert-unpushed-to-pushremote)
+  (add-to-list 'magit-log-section-arguments "--graph")
+  (evil-define-key 'normal magit-mode-map ";" 'magit-section-toggle)
+  (evil-define-key 'normal magit-mode-map "\\" nil))
+(eval-after-load "magit" #'gcs-magit-config)
+
+
+(setq-default
+ ;; js2-mode
+ js2-basic-offset 2
+ ;; web-mode
+ css-indent-offset 2
+ web-mode-markup-indent-offset 2
+ web-mode-css-indent-offset 2
+ web-mode-code-indent-offset 2
+ web-mode-attr-indent-offset 2)
