@@ -326,12 +326,22 @@
 (key-chord-define-global "l;" 'eval-expression)
 
 
-
-
+(defun fu/helm-find-files-navigate-forward (orig-fun &rest args)
+  "Hack so that RET won't open dired on directories, except if it's the '/.' that
+shows at the top of every directory."
+  (if (and (equal "Find Files" (assoc-default 'name (helm-get-current-source)))
+           (equal args nil)
+           (stringp (helm-get-selection))
+           (or
+            (not (file-directory-p (helm-get-selection)))
+            (string-equal (substring (helm-get-selection) -2) "/.")))
+      (helm-maybe-exit-minibuffer)
+    (apply orig-fun args)))
 (defun gcs-helm-config ()
   (define-key helm-map (kbd "s-j") 'helm-next-line)
   (define-key helm-map (kbd "s-k") 'helm-previous-line)
-  (define-key helm-find-files-map (kbd "RET") 'helm-execute-persistent-action))
+  (advice-add 'helm-execute-persistent-action :around #'fu/helm-find-files-navigate-forward)
+  (define-key helm-find-files-map (kbd "<return>") 'helm-execute-persistent-action))
 (eval-after-load "helm" #'gcs-helm-config)
 
 (defun gcs-magit-config ()
