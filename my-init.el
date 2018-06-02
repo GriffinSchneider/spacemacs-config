@@ -1,5 +1,7 @@
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
+(setq powerline-height 15)
+(spacemacs/set-default-font '("Fira Code" :size 12))
 
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
@@ -310,8 +312,6 @@
 (key-chord-define-global "km" 'gcs-smooth-scroll-down-half-screen)
 
 (key-chord-define-global "kg" 'evil-goto-line)
-
-                                        ; (key-chord-define-global " j" 'yas-expand)
 
 ;; Semicolon chords for evaluation
 (defun gcs-eval-dwim ()
