@@ -1,7 +1,31 @@
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
-(setq powerline-height 15)
 (spacemacs/set-default-font '("Fira Code" :size 12))
+
+(with-eval-after-load 'auto-complete
+  (define-key ac-completing-map (kbd "s-e") 'ac-next)
+  (define-key ac-menu-map (kbd "s-k") 'ac-previous)
+  (define-key ac-completing-map (kbd "s-j") 'ac-next)
+  (define-key ac-completing-map (kbd "s-k") 'ac-previous))
+
+(with-eval-after-load 'company
+  (define-key company-active-map (kbd "s-j") 'company-select-next)
+  (define-key company-active-map (kbd "s-k") 'company-select-previous))
+
+(with-eval-after-load 'tetris
+  (evilified-state-evilify tetris-mode tetris-mode-map
+    "j" 'tetris-move-left
+    "f" 'tetris-move-bottom
+    "k" 'tetris-rotate-prev
+    "l" 'tetris-move-right
+    "m" 'tetris-move-down
+    "q" 'spacemacs/tetris-quit-game))
+
+(with-eval-after-load 'powerline
+  (setq powerline-height 15))
+
+(with-eval-after-load 'magit
+  (evil-define-key 'normal magit-mode-map "\\" nil))
 
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
@@ -43,7 +67,7 @@
  "s-o"   (enlarge-window-horizontally 5)
 
  ;; Xcode-like keybindings
-                                        ;"s-O" gcs-find-file-dwim
+ ; "s-O" gcs-find-file-dwim
  "C-s-<up>" ff-find-other-file
 
  ;; Use s-[h, j, k, l] for window navigation
@@ -62,7 +86,9 @@
  "s-=" (text-scale-increase 1)
  "s--" (text-scale-increase -1)
  "s-0" (text-scale-adjust 0)
- )
+
+ "s-C-M-T" tetris
+)
 
  ;;;;; EVIL STATE MAP KEYS ;;;;;
 (defun gcs-define-evil-motion-key (key def)
@@ -347,9 +373,8 @@ shows at the top of every directory. In that case, open magit status on the dire
     (helm-maybe-exit-minibuffer))
    ((string-equal (substring (helm-get-selection) -2) "/.")
     (let ((repo (helm-get-selection)))
-      (progn
-        (run-at-time nil nil 'gcs-maybe-magit-directory repo)
-        (call-interactively 'helm-keyboard-quit))))
+      (run-at-time nil nil 'gcs-maybe-magit-directory repo)
+      (call-interactively 'helm-keyboard-quit)))
    (t
     (helm-execute-persistent-action))))
 
@@ -360,7 +385,7 @@ shows at the top of every directory. In that case, open magit status on the dire
 (eval-after-load "helm" #'gcs-helm-config)
 
 (defun gcs-magit-config ()
-  (magit-add-section-hook 'magit-status-sections-hook 'magit-insert-recent-commits 'magit-insert-unpushed-to-pushremote)
+  (magit-add-section-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-pushremote)
   (add-to-list 'magit-log-section-arguments "--graph")
   (evil-define-key 'normal magit-mode-map ";" 'magit-section-toggle)
   (evil-define-key 'normal magit-mode-map "\\" nil))
