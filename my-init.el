@@ -326,22 +326,37 @@
 (key-chord-define-global "l;" 'eval-expression)
 
 
-(defun fu/helm-find-files-navigate-forward (orig-fun &rest args)
-  "Hack so that RET won't open dired on directories, except if it's the '/.' that
-shows at the top of every directory."
-  (if (and (equal "Find Files" (assoc-default 'name (helm-get-current-source)))
-           (equal args nil)
-           (stringp (helm-get-selection))
-           (or
-            (not (file-directory-p (helm-get-selection)))
-            (string-equal (substring (helm-get-selection) -2) "/.")))
-      (helm-maybe-exit-minibuffer)
-    (apply orig-fun args)))
+(defmacro gcs-quit-and-run (body &rest args)
+  "Quit the minibuffer and run BODY afterwards."
+  `(progn
+     (run-at-time nil nil (lambda (,@args) ,body))
+     (minibuffer-keyboard-quit)))
+
+(defun gcs-maybe-magit-directory (dir)
+  "If dir is in a git repo, open git status on it. Otherwise, open dired in dir."
+  (if (magit-toplevel dir)
+      (magit-status-internal (file-name-directory dir))
+    (dired dir)))
+
+(defun gcs-helm-find-files-smart-enter ()
+  "Avoid dired - RET is like pressing TAB on directories, except if it's the '/.' that
+shows at the top of every directory. In that case, open magit status on the directory"
+  (interactive)
+  (cond
+   ((and (stringp (helm-get-selection)) (not (file-directory-p (helm-get-selection))))
+    (helm-maybe-exit-minibuffer))
+   ((string-equal (substring (helm-get-selection) -2) "/.")
+    (let ((repo (helm-get-selection)))
+      (progn
+        (run-at-time nil nil 'gcs-maybe-magit-directory repo)
+        (call-interactively 'helm-keyboard-quit))))
+   (t
+    (helm-execute-persistent-action))))
+
 (defun gcs-helm-config ()
   (define-key helm-map (kbd "s-j") 'helm-next-line)
   (define-key helm-map (kbd "s-k") 'helm-previous-line)
-  (advice-add 'helm-execute-persistent-action :around #'fu/helm-find-files-navigate-forward)
-  (define-key helm-find-files-map (kbd "<return>") 'helm-execute-persistent-action))
+  (define-key helm-find-files-map (kbd "<return>") 'gcs-helm-find-files-smart-enter))
 (eval-after-load "helm" #'gcs-helm-config)
 
 (defun gcs-magit-config ()
