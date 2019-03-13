@@ -27,6 +27,54 @@
 (with-eval-after-load 'magit
   (evil-define-key 'normal magit-mode-map "\\" nil))
 
+(with-eval-after-load 'ibuffer
+  (defconst gcs-ibuffer-fontification-alist
+    '((ruby-mode . font-lock-string-face)
+      (sh-mode . font-lock-string-face)
+      (objc-mode . font-lock-constant-face)
+      (c-mode . font-lock-constant-face)
+      (java-mode . font-lock-constant-face)
+      (emacs-lisp-mode . font-lock-variable-name-face)
+      (org-mode . font-lock-negation-char-face)
+      (dired-mode . font-lock-function-name-face)
+      (term-mode . font-lock-doc-string-face)))
+  (setq ibuffer-formats
+        `((mark
+           modified
+           read-only
+           vc-status-mini
+           " "
+           (name 30 30 :left :elide)
+           ,(propertize "| " 'font-lock-face ibuffer-title-face)
+           (mode 10 10 :left)
+           ,(propertize " | " 'font-lock-face ibuffer-title-face)
+           filename)))
+  (setq ibuffer-fontification-alist
+        `(,@(mapcar (lambda (b)
+                      `(9999 (eq major-mode ',(car b)) ,(cdr b)))
+                    gcs-ibuffer-fontification-alist)
+          (90 (string-match "magit" (symbol-name major-mode))
+              font-lock-function-name-face)
+          (90 (or (string-match "^*" (buffer-name))
+                  (memq major-mode ibuffer-help-buffer-modes))
+              font-lock-comment-face)))
+  (define-key ibuffer-mode-map (kbd "C-g") 'quit-window)
+  (define-key ibuffer-mode-map (kbd "j") 'ibuffer-forward-line)
+  (define-key ibuffer-mode-map (kbd "k") 'ibuffer-backward-line)
+  (define-key ibuffer-mode-map (kbd "C-j") 'ibuffer-forward-filter-group)
+  (define-key ibuffer-mode-map (kbd "C-k") 'ibuffer-backward-filter-group)
+  (defun gcs-ibuffer-hook ()
+    (face-remap-add-relative 'default 'font-lock-comment-face)
+    (copy-face 'font-lock-keyword-face 'tempface )
+    (setq ibuffer-filter-group-name-face 'tempface)
+    (face-remap-add-relative ibuffer-filter-group-name-face
+                             :box '(:style released-button
+                                           :line-width 2))
+    (ibuffer-vc-set-filter-groups-by-vc-root)
+    (unless (eq ibuffer-sorting-mode 'alphabetic)
+      (ibuffer-do-sort-by-alphabetic)))
+  (add-hook 'ibuffer-hook 'gcs-ibuffer-hook))
+
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
 (require 'ibuffer)
@@ -44,9 +92,9 @@
                       `(global-set-key (kbd ,key) ',command)))
                   bindings)))
 
-(defun gcs-put-buffer-in-window (dir)
-  "Pop the current window's buffer off the window's buffer list
- and push it onto the buffer list of the window in direction DIR."
+(defun gcs-copy-buffer-to-window (dir)
+  "Copy the current window's buffer onto the buffer list of the window
+ in direction DIR."
   (let* ((this-window (selected-window))
          (other-window (progn
                          (windmove-do-window-select dir)
@@ -56,7 +104,13 @@
          (this-start   (window-start this-window))
          (other-start  (window-start other-window)))
     (set-window-buffer other-window this-buffer)
-    (set-window-start  other-window this-start)
+    (set-window-start  other-window this-start)))
+
+(defun gcs-put-buffer-in-window (dir)
+  "Pop the current window's buffer off the window's buffer list
+ and push it onto the buffer list of the window in direction DIR."
+  (let* ((this-window (selected-window)))
+    (gcs-copy-buffer-to-window dir)
     (switch-to-prev-buffer this-window)))
 
 (global-set-keys
@@ -77,10 +131,18 @@
  "s-j" windmove-down
 
  ;; Use s-[H, J, K, L] to swap windows
- "s-H" (gcs-put-buffer-in-window 'left)
- "s-J" (gcs-put-buffer-in-window 'down)
- "s-K" (gcs-put-buffer-in-window 'up)
- "s-L" (gcs-put-buffer-in-window 'right)
+ "s-H"   (gcs-put-buffer-in-window  'left)
+ "s-M-h" (gcs-copy-buffer-to-window 'left)
+ "s-M-˙" (gcs-copy-buffer-to-window 'left)
+ "s-J"   (gcs-put-buffer-in-window  'down)
+ "s-M-j" (gcs-copy-buffer-to-window 'down)
+ "s-M-∆" (gcs-copy-buffer-to-window 'down)
+ "s-K"   (gcs-put-buffer-in-window  'up)
+ "s-M-k" (gcs-copy-buffer-to-window 'up)
+ "s-M-˚" (gcs-copy-buffer-to-window 'up)
+ "s-L"   (gcs-put-buffer-in-window  'right)
+ "s-M-l" (gcs-copy-buffer-to-window 'right)
+ "s-M-¬" (gcs-copy-buffer-to-window 'right)
 
  ;; s-=, s--, and s-0 to adjust font size like in a browser
  "s-=" (text-scale-increase 1)
@@ -300,7 +362,7 @@
 
  ;;;;; KEY-CHORD KEYBINDINGS ;;;;;
 (key-chord-mode 1)
-(setq key-chord-two-keys-delay 0.05)
+(setq key-chord-two-keys-delay 0.04)
 
 ;; Any prefix key, "\x" can also be triggered with the key chord "jx"
 (mapc (lambda (prefix-command)
@@ -321,7 +383,8 @@
 ;; First fingers column
 (key-chord-define evil-normal-state-map "jk" 'keyboard-quit)
 (key-chord-define minibuffer-local-map "jk" 'abort-recursive-edit)
-(key-chord-define ibuffer-mode-map "jk" 'ibuffer-quit) ;TODO: why doesn't this work without the require?
+
+(key-chord-define ibuffer-mode-map "jk" 'ibuffer-quit)
 (key-chord-define-global "m," 'helm-M-x)
 
 ;; K + o or . for killing buffer or window
@@ -401,3 +464,42 @@ shows at the top of every directory. In that case, open magit status on the dire
  web-mode-css-indent-offset 2
  web-mode-code-indent-offset 2
  web-mode-attr-indent-offset 2)
+
+
+(setq msp-dev-dirs (list
+  ;; "api-starter-kit"
+  "auth-and-auth"
+  "configured-rabbitmq-client"
+  ;; "configured-winston"
+  "gb-services"
+  "gb-services-tester"
+  "identity-api"
+  "identity-serv"
+  "loves-serv"
+  "loyalty-serv"
+  "membership-serv"
+  "mobile-orchestration-api"
+  ;; "notes"
+  "notification-serv"
+  "payment-api"
+  "payment-serv"
+  "payment-web"
+  ;; "poi-serv"
+  "secure-payment-serv"
+  "service"
+  "tooling"
+  "wex-serv"
+  ))
+
+(defun msp-helm-dev-do-ag-region-or-symbol ()
+  "Search in current project with `ag' using a default input."
+  (interactive)
+  (spacemacs//helm-do-ag-region-or-symbol 'helm-do-ag "/Users/mpav/dev/"))
+
+(defun msp-helm-dev-do-ag ()
+  "Search in current project with `ag' using a default input."
+  (interactive)
+  (helm-do-ag "/Users/mpav/dev/" msp-dev-dirs))
+
+(spacemacs/set-leader-keys "sd" 'msp-helm-dev-do-ag)
+(spacemacs/set-leader-keys "sD" 'msp-helm-dev-do-ag-region-or-symbol)
