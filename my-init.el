@@ -42,7 +42,6 @@
         `((mark
            modified
            read-only
-           vc-status-mini
            " "
            (name 30 30 :left :elide)
            ,(propertize "| " 'font-lock-face ibuffer-title-face)
@@ -74,6 +73,16 @@
     (unless (eq ibuffer-sorting-mode 'alphabetic)
       (ibuffer-do-sort-by-alphabetic)))
   (add-hook 'ibuffer-hook 'gcs-ibuffer-hook))
+
+(with-eval-after-load 'tide
+  (defun gcs-command-click (event)
+    (interactive "e")
+    (mouse-set-point event)
+    (tide-jump-to-definition))
+  (define-key tide-mode-map [s-mouse-1] 'gcs-command-click))
+
+(with-eval-after-load 'neotree
+  (setq neo-theme 'icons))
 
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
@@ -131,16 +140,16 @@
  "s-j" windmove-down
 
  ;; Use s-[H, J, K, L] to swap windows
- "s-H"   (gcs-put-buffer-in-window  'left)
+ "s-C-H" (gcs-put-buffer-in-window  'left)
  "s-M-h" (gcs-copy-buffer-to-window 'left)
  "s-M-˙" (gcs-copy-buffer-to-window 'left)
- "s-J"   (gcs-put-buffer-in-window  'down)
+ "s-C-J" (gcs-put-buffer-in-window  'down)
  "s-M-j" (gcs-copy-buffer-to-window 'down)
  "s-M-∆" (gcs-copy-buffer-to-window 'down)
- "s-K"   (gcs-put-buffer-in-window  'up)
+ "s-C-K" (gcs-put-buffer-in-window  'up)
  "s-M-k" (gcs-copy-buffer-to-window 'up)
  "s-M-˚" (gcs-copy-buffer-to-window 'up)
- "s-L"   (gcs-put-buffer-in-window  'right)
+ "s-C-L" (gcs-put-buffer-in-window  'right)
  "s-M-l" (gcs-copy-buffer-to-window 'right)
  "s-M-¬" (gcs-copy-buffer-to-window 'right)
 
@@ -148,6 +157,8 @@
  "s-=" (text-scale-increase 1)
  "s--" (text-scale-increase -1)
  "s-0" (text-scale-adjust 0)
+
+ "s-J" (neotree-show)
 
  "s-C-M-T" tetris
 )
