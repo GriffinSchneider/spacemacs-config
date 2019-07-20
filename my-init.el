@@ -74,15 +74,44 @@
       (ibuffer-do-sort-by-alphabetic)))
   (add-hook 'ibuffer-hook 'gcs-ibuffer-hook))
 
-(with-eval-after-load 'tide
-  (defun gcs-command-click (event)
-    (interactive "e")
-    (mouse-set-point event)
-    (tide-jump-to-definition))
-  (define-key tide-mode-map [s-mouse-1] 'gcs-command-click))
 
 (with-eval-after-load 'neotree
-  (setq neo-theme 'icons))
+  ;; Improve performance with icon fonts
+  (setq inhibit-compacting-font-caches t)
+  (setq neo-theme 'icons)
+  ;; Override to not insert a chevron icon, and just use open vs closed folder icons to indicate whether it's open or closed.
+  (defun gcs-all-the-icons-icon-for-dir (dir &optional chevron padding)
+    (let* ((matcher (all-the-icons-match-to-alist (file-name-base (directory-file-name dir)) all-the-icons-dir-icon-alist))
+           (path (expand-file-name dir))
+           (padding (or padding "\t"))
+           (icon (cond
+                  ((file-symlink-p path)
+                   (all-the-icons-octicon "file-symlink-directory" :height 1.0))
+                  ((all-the-icons-dir-is-submodule path)
+                   (all-the-icons-octicon "file-submodule" :height 1.0))
+                  ((file-exists-p (format "%s/.git" path))
+                   (format "%s" (all-the-icons-octicon "repo" :height 1.1)))
+                  (t (apply (car matcher) (cdr matcher)))))
+           (good-folder (if (equal chevron "down") (all-the-icons-faicon "folder-open") (all-the-icons-faicon "folder")))
+           (real-icon (if (equal icon (all-the-icons-octicon "file-directory")) good-folder icon)))
+      (format "%s%s%s" padding real-icon padding)))
+  (advice-add #'all-the-icons-icon-for-dir :override #'gcs-all-the-icons-icon-for-dir)
+  ;; Override to not insert a bunch of indentation before leaf nodes, now that directories have less indentation due to
+  ;; removing the huge chevron.
+  (defun gcs-neo-buffer--insert-fold-symbol (orig-fun &rest args)
+    (if (equal (car args) 'leaf)
+        (insert (format "\t%s\t" (all-the-icons-icon-for-file (cadr args))))
+      (apply orig-fun args)))
+  (advice-add #'neo-buffer--insert-fold-symbol :around #'gcs-neo-buffer--insert-fold-symbol))
+
+(with-eval-after-load 'typescript-mode
+  ;; Typescript standard lib .d.ts files are full of \M
+  (defun remove-dos-eol ()
+    "Do not show ^M in files containing mixed UNIX and DOS line endings."
+    (interactive)
+    (setq buffer-display-table (make-display-table))
+    (aset buffer-display-table ?\^M []))
+  (add-hook 'typescript-mode-hook 'remove-dos-eol))
 
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
@@ -121,6 +150,19 @@
   (let* ((this-window (selected-window)))
     (gcs-copy-buffer-to-window dir)
     (switch-to-prev-buffer this-window)))
+
+(defun gcs-go-to-definition ()
+  (interactive)
+  (if (bound-and-true-p tide-mode)
+      (tide-jump-to-definition)
+    (spacemacs/jump-to-definition)))
+
+(defun gcs-command-click (event)
+  (interactive "e")
+  (mouse-set-point event)
+  (gcs-go-to-definition))
+
+(global-set-key [s-mouse-1] 'gcs-command-click)
 
 (global-set-keys
  ;; Use [C-]s-[y, u, i, o] to resize windows
@@ -181,11 +223,11 @@
             `(progn (evil-scroll-line-up ,count) (evil-previous-line ,count))
           `(progn (evil-scroll-line-down ,count) (evil-next-line ,count))))))
 
-(def-gcs-move-line 'up 3)
-(def-gcs-move-line 'down 3)
+(def-gcs-move-line 'up 2)
+(def-gcs-move-line 'down 2)
 
-(gcs-define-evil-motion-key (read-kbd-macro "C-j") 'gcs-next-line-3)
-(gcs-define-evil-motion-key (read-kbd-macro "C-k") 'gcs-previous-line-3)
+(gcs-define-evil-motion-key (read-kbd-macro "C-j") 'gcs-next-line-2)
+(gcs-define-evil-motion-key (read-kbd-macro "C-k") 'gcs-previous-line-2)
 
 ;; Use j and k pressed within .15 seconds to exit insert mode
 (defun gcs-evil-maybe-exit (entry-key exit-key)
@@ -215,12 +257,12 @@
 ;; Smooth half-page scrolling
 (defun gcs-smooth-scroll-up (n)
   (when (> n 0)
-    (scroll-down-line 20)
-    (run-at-time 0.016 nil 'gcs-smooth-scroll-up (- n 20))))
+    (scroll-down-line 7)
+    (run-at-time 0.016 nil 'gcs-smooth-scroll-up (- n 7))))
 (defun gcs-smooth-scroll-down (n)
   (when (> n 0)
-    (scroll-up-line 20)
-    (run-at-time 0.016 nil 'gcs-smooth-scroll-down (- n 15))))
+    (scroll-up-line 7)
+    (run-at-time 0.016 nil 'gcs-smooth-scroll-down (- n 7))))
 (defun gcs-smooth-scroll-down-half-screen ()
   (interactive)
   (gcs-smooth-scroll-down (/ (window-height) 2)))
@@ -316,7 +358,7 @@
      "s-k" delete-window
      "K"   gcs-kill-buffer-and-window
      "g"   magit-status
-     "l"   magit-log-buffer-file-popup
+     "l"   gcs-go-to-definition
      "u"   undo-tree-visualize
      "a"   helm-projectile-ag
      "x"   helm-M-x
@@ -373,7 +415,7 @@
 
  ;;;;; KEY-CHORD KEYBINDINGS ;;;;;
 (key-chord-mode 1)
-(setq key-chord-two-keys-delay 0.04)
+(setq key-chord-two-keys-delay 0.035)
 
 ;; Any prefix key, "\x" can also be triggered with the key chord "jx"
 (mapc (lambda (prefix-command)
@@ -467,9 +509,10 @@ shows at the top of every directory. In that case, open magit status on the dire
 (eval-after-load "magit" #'gcs-magit-config)
 
 
-(setq-default
- ;; js2-mode
+(setq
  js2-basic-offset 2
+ typescript-indent-level 2
+ js-indent-level 2
  ;; web-mode
  css-indent-offset 2
  web-mode-markup-indent-offset 2
@@ -515,3 +558,20 @@ shows at the top of every directory. In that case, open magit status on the dire
 
 (spacemacs/set-leader-keys "sd" 'msp-helm-dev-do-ag)
 (spacemacs/set-leader-keys "sD" 'msp-helm-dev-do-ag-region-or-symbol)
+
+(spacemacs/toggle-vi-tilde-fringe-off)
+
+(setq create-lockfiles nil)
+
+(setq helm-display-function #'helm-display-buffer-in-own-frame)
+(setq helm-display-buffer-reuse-frame t)
+(setq helm-use-undecorated-frame-option t)
+(setq helm-display-buffer-default-width 128)
+(setq helm-display-buffer-width 128)
+
+
+;; Which-key does (add-hook 'pre-command-hook #'which-key--hide-popup), which runs which-key--hide-buffer-side-window
+;; Treemacs runs treemacs--fix-width-after-which-key in advice on which-key--hide-buffer-side-window
+;; End result: typing is very slow with treemacs open when which-key is on.
+;; Treemacs is gone now, but I don't use this anyway so leaving it off just in case.
+(which-key-mode -1)
