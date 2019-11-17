@@ -1,6 +1,40 @@
+(setq undo-tree-enable-undo-in-region nil)
+
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
+
 (spacemacs/set-default-font '("Fira Code" :size 12))
+
+;; Craziness to enable fira code glyphs from https://github.com/tonsky/FiraCode/wiki/Emacs-instructions.kj
+; (let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
+;                (35 . ".\\(?:###\\|##\\|_(\\|[#(?[_{]\\)")
+;                (36 . ".\\(?:>\\)")
+;                (37 . ".\\(?:\\(?:%%\\)\\|%\\)")
+;                (38 . ".\\(?:\\(?:&&\\)\\|&\\)")
+;                (42 . ".\\(?:\\(?:\\*\\*/\\)\\|\\(?:\\*[*/]\\)\\|[*/>]\\)")
+;                (43 . ".\\(?:\\(?:\\+\\+\\)\\|[+>]\\)")
+;                (45 . ".\\(?:\\(?:-[>-]\\|<<\\|>>\\)\\|[<>}~-]\\)")
+;                (46 . ".\\(?:\\(?:\\.[.<]\\)\\|[.=-]\\)")
+;                (47 . ".\\(?:\\(?:\\*\\*\\|//\\|==\\)\\|[*/=>]\\)")
+;                (48 . ".\\(?:x[a-zA-Z]\\)")
+;                (58 . ".\\(?:::\\|[:=]\\)")
+;                (59 . ".\\(?:;;\\|;\\)")
+;                (60 . ".\\(?:\\(?:!--\\)\\|\\(?:~~\\|->\\|\\$>\\|\\*>\\|\\+>\\|--\\|<[<=-]\\|=[<=>]\\||>\\)\\|[*$+~/<=>|-]\\)")
+;                (61 . ".\\(?:\\(?:/=\\|:=\\|<<\\|=[=>]\\|>>\\)\\|[<=>~]\\)")
+;                (62 . ".\\(?:\\(?:=>\\|>[=>-]\\)\\|[=>-]\\)")
+;                (63 . ".\\(?:\\(\\?\\?\\)\\|[:=?]\\)")
+;                (91 . ".\\(?:]\\)")
+;                (92 . ".\\(?:\\(?:\\\\\\\\\\)\\|\\\\\\)")
+;                (94 . ".\\(?:=\\)")
+;                (119 . ".\\(?:ww\\)")
+;                (123 . ".\\(?:-\\)")
+;                (124 . ".\\(?:\\(?:|[=|]\\)\\|[=>|]\\)")
+;                (126 . ".\\(?:~>\\|~~\\|[>=@~-]\\)")
+;                )
+;              ))
+;   (dolist (char-regexp alist)
+;     (set-char-table-range composition-function-table (car char-regexp)
+;                           `([,(cdr char-regexp) 0 font-shape-gstring]))))
 
 (with-eval-after-load 'auto-complete
   (define-key ac-completing-map (kbd "s-e") 'ac-next)
@@ -23,6 +57,8 @@
 
 (with-eval-after-load 'powerline
   (setq powerline-height 15))
+
+
 
 (with-eval-after-load 'magit
   (evil-define-key 'normal magit-mode-map "\\" nil))
@@ -74,7 +110,6 @@
       (ibuffer-do-sort-by-alphabetic)))
   (add-hook 'ibuffer-hook 'gcs-ibuffer-hook))
 
-
 (with-eval-after-load 'neotree
   ;; Improve performance with icon fonts
   (setq inhibit-compacting-font-caches t)
@@ -112,6 +147,25 @@
     (setq buffer-display-table (make-display-table))
     (aset buffer-display-table ?\^M []))
   (add-hook 'typescript-mode-hook 'remove-dos-eol))
+
+
+(with-eval-after-load 'helm
+  (defun gcs-helm-find-files-smart-enter ()
+    "Avoid dired - RET is like pressing TAB on directories, except if it's the '/.' that
+shows at the top of every directory. In that case, open magit status on the directory"
+    (interactive)
+    (cond
+     ((and (stringp (helm-get-selection)) (not (file-directory-p (helm-get-selection))))
+      (helm-maybe-exit-minibuffer))
+     ((string-equal (substring (helm-get-selection) -2) "/.")
+      (let ((repo (helm-get-selection)))
+        (run-at-time nil nil 'gcs-maybe-magit-directory repo)
+        (call-interactively 'helm-keyboard-quit)))
+     (t
+      (helm-execute-persistent-action))))
+  (define-key helm-map (kbd "s-j") 'helm-next-line)
+  (define-key helm-map (kbd "s-k") 'helm-previous-line)
+  (define-key helm-find-files-map (kbd "<return>") 'gcs-helm-find-files-smart-enter))
 
 ;; GRIFF STUFF ;;;;;;
 (require 'cl)
@@ -480,26 +534,7 @@
       (magit-status-internal (file-name-directory dir))
     (dired dir)))
 
-(defun gcs-helm-find-files-smart-enter ()
-  "Avoid dired - RET is like pressing TAB on directories, except if it's the '/.' that
-shows at the top of every directory. In that case, open magit status on the directory"
-  (interactive)
-  (cond
-   ((and (stringp (helm-get-selection)) (not (file-directory-p (helm-get-selection))))
-    (helm-maybe-exit-minibuffer))
-   ((string-equal (substring (helm-get-selection) -2) "/.")
-    (let ((repo (helm-get-selection)))
-      (run-at-time nil nil 'gcs-maybe-magit-directory repo)
-      (call-interactively 'helm-keyboard-quit)))
-   (t
-    (helm-execute-persistent-action))))
 
-(defun gcs-helm-config ()
-  (define-key helm-map (kbd "s-j") 'helm-next-line)
-  (define-key helm-map (kbd "s-k") 'helm-previous-line)
-  ;; (define-key helm-find-files-map (kbd "<return>") 'gcs-helm-find-files-smart-enter)
-  )
-(eval-after-load "helm" #'gcs-helm-config)
 
 (defun gcs-magit-config ()
   (magit-add-section-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-pushremote)
