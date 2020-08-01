@@ -5,6 +5,40 @@
 
 (spacemacs/set-default-font '("Fira Code" :size 12))
 
+(use-package org-roam
+  :after org
+  :hook (org-mode . org-roam-mode)
+  :custom
+  (org-roam-directory "~/roam/")
+  :bind
+  ("C-c n l" . org-roam)
+  ("C-c n t" . org-roam-today)
+  ("C-c n f" . org-roam-find-file-functionile)
+  ("C-c n i" . org-roam-insert)
+  ("C-c n g" . org-roam-show-graph))
+(with-eval-after-load 'org
+  (defun gcs-org-paste-image ()
+    (interactive)
+    (let* ((image-folder (concat default-directory "res/img/screenshots/"))
+           (image-name (format-time-string "%Y%m%d%H%M%S.png"))
+           (image-file (concat image-folder image-name))
+           (exit-status (call-process "pngpaste" nil nil nil image-file)))
+      (org-insert-link nil (concat "file:" image-file) nil)
+      (org-display-inline-images)))
+  (setq org-todo-keywords '((sequence "TODO(!)" "DOING(!)" "CANCELLED(c!)" "HOLDING(h!)" "DONE(!)")))
+  (setq org-log-into-drawer t)
+  (setq org-log-states-order-reversed nil)
+  (setq org-agenda-files '("~/roam"))
+  (setq org-roam-dailies-capture-templates
+        `(("d" "daily" plain (function org-roam-capture--get-point)
+           ,(concat
+             "* %<%Y-%m-%d>\n "
+             "<[[file:%(format-time-string \"%Y-%m-%d\" (time-add (* -1 86400) (current-time))).org][yesterday]]> "
+             "<[[file:%(format-time-string \"%Y-%m-%d\" (time-add (*  1 86400) (current-time))).org][tomorrow]]>\n"
+             )           :immediate-finish t
+           :file-name "%<%Y-%m-%d>"
+           :head ""))))
+
 ;; Craziness to enable fira code glyphs from https://github.com/tonsky/FiraCode/wiki/Emacs-instructions.kj
 ; (let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
 ;                (35 . ".\\(?:###\\|##\\|_(\\|[#(?[_{]\\)")
