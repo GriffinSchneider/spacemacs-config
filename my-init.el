@@ -30,6 +30,10 @@
       (org-display-inline-images)))
   (set-face-attribute 'org-drawer nil :height 0.5)
   (set-face-attribute 'org-table nil :inherit 'fixed-pitch)
+  (defun gcs-org-mode-hook ()
+    (olivetti-mode 1))
+  (add-hook 'org-mode-hook 'gcs-org-mode-hook)
+
   (setq org-todo-keywords '((sequence "TODO(!)" "DOING(!)" "CANCELLED(c!)" "HOLDING(h!)" "DONE(!)")))
   (setq org-log-into-drawer t)
   (setq org-log-states-order-reversed nil)
@@ -45,6 +49,16 @@
            :immediate-finish t
            :file-name "%<%Y-%m-%d>"
            ))))
+
+(with-eval-after-load 'olivetti
+  (setq-default olivetti-body-width 130))
+
+(with-eval-after-load 'term
+  (defun gcs-clear-terminal ()
+    (interactive)
+    (let ((inhibit-read-only t)) (term-reset-terminal)))
+  (define-key term-mode-map (kbd "s-K") 'gcs-clear-terminal)
+  (define-key term-raw-map (kbd "s-K") 'gcs-clear-terminal))
 
 ;; Craziness to enable fira code glyphs from https://github.com/tonsky/FiraCode/wiki/Emacs-instructions.kj
 ; (let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
