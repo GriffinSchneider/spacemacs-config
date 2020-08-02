@@ -3,7 +3,10 @@
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
 
-(spacemacs/set-default-font '("Fira Code" :size 12))
+(spacemacs/set-default-font '("Input Mono Narrow" :size 12))
+
+(set-face-attribute 'variable-pitch nil :family "Input Sans Condensed")
+(global-visual-line-mode)
 
 (use-package org-roam
   :after org
@@ -25,19 +28,23 @@
            (exit-status (call-process "pngpaste" nil nil nil image-file)))
       (org-insert-link nil (concat "file:" image-file) nil)
       (org-display-inline-images)))
+  (set-face-attribute 'org-drawer nil :height 0.5)
+  (set-face-attribute 'org-table nil :inherit 'fixed-pitch)
   (setq org-todo-keywords '((sequence "TODO(!)" "DOING(!)" "CANCELLED(c!)" "HOLDING(h!)" "DONE(!)")))
   (setq org-log-into-drawer t)
   (setq org-log-states-order-reversed nil)
   (setq org-agenda-files '("~/roam"))
+  (setq org-hide-emphasis-markers t)
   (setq org-roam-dailies-capture-templates
-        `(("d" "daily" plain (function org-roam-capture--get-point)
-           ,(concat
-             "* %<%Y-%m-%d>\n "
-             "<[[file:%(format-time-string \"%Y-%m-%d\" (time-add (* -1 86400) (current-time))).org][yesterday]]> "
-             "<[[file:%(format-time-string \"%Y-%m-%d\" (time-add (*  1 86400) (current-time))).org][tomorrow]]>\n"
-             )           :immediate-finish t
+        `(("d" "daily" plain (function org-roam-capture--get-point) ""
+           :head ,(concat
+             "* %<%Y-%m-%d>\n"
+             " <[[file:%(format-time-string \"%Y-%m-%d\" (time-add (* -1 86400) (s--aget org-roam-capture--info 'time))).org][yesterday]]>"
+             " <[[file:%(format-time-string \"%Y-%m-%d\" (time-add (*  1 86400) (s--aget org-roam-capture--info 'time))).org][tomorrow]]>\n"
+             )
+           :immediate-finish t
            :file-name "%<%Y-%m-%d>"
-           :head ""))))
+           ))))
 
 ;; Craziness to enable fira code glyphs from https://github.com/tonsky/FiraCode/wiki/Emacs-instructions.kj
 ; (let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
@@ -524,6 +531,8 @@ shows at the top of every directory. In that case, open magit status on the dire
 ;; First fingers column
 (key-chord-define evil-normal-state-map "jk" 'keyboard-quit)
 (key-chord-define minibuffer-local-map "jk" 'abort-recursive-edit)
+(key-chord-define-global "ji" 'org-roam-insert)
+
 
 (key-chord-define ibuffer-mode-map "jk" 'ibuffer-quit)
 (key-chord-define-global "m," 'helm-M-x)
