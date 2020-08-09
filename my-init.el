@@ -1,4 +1,6 @@
+(setq exec-path (append exec-path '("~/.nvm/versions/node/v13.5.0/bin")))
 (setq undo-tree-enable-undo-in-region nil)
+(setq history-delete-duplicates t)
 
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
@@ -7,6 +9,17 @@
 
 (set-face-attribute 'variable-pitch nil :family "Input Sans Condensed")
 (global-visual-line-mode)
+
+(require 'ivy-posframe)
+(setq ivy-posframe-display-functions-alist '((t . ivy-posframe-display-at-point)))
+(ivy-posframe-mode 1)
+(setq ivy-posframe-parameters
+      '((left-fringe . 8)
+        (right-fringe . 8)))
+(setq ivy-posframe-border-width 10)
+
+(use-package adaptive-wrap
+  :config (add-hook 'visual-line-mode-hook #'adaptive-wrap-prefix-mode))
 
 (use-package org-roam
   :after org
@@ -26,6 +39,8 @@
            (image-name (format-time-string "%Y%m%d%H%M%S.png"))
            (image-file (concat image-folder image-name))
            (exit-status (call-process "pngpaste" nil nil nil image-file)))
+      (insert "#+ATTR_ORG: :width 600")
+      (newline-and-indent)
       (org-insert-link nil (concat "file:" image-file) nil)
       (org-display-inline-images)))
   (set-face-attribute 'org-drawer nil :height 0.5)
@@ -34,11 +49,26 @@
     (olivetti-mode 1))
   (add-hook 'org-mode-hook 'gcs-org-mode-hook)
 
+  (defun gcs-org-show-notification-handler (msg)
+    (ns-do-applescript (concat "display notification \"" msg "\" with title \"Org Notification\" sound name \"Basso\"")))
+  (setq org-show-notification-handler 'gcs-org-show-notification-handler)
+
   (setq org-todo-keywords '((sequence "TODO(!)" "DOING(!)" "CANCELLED(c!)" "HOLDING(h!)" "DONE(!)")))
   (setq org-log-into-drawer t)
+  (setq org-log-done nil)
   (setq org-log-states-order-reversed nil)
-  (setq org-agenda-files '("~/roam"))
+
+  (setq org-modules '(org-habit ol-eww ol-docview))
   (setq org-hide-emphasis-markers t)
+  (setq org-hide-leading-stars t)
+  (setq org-superstar-special-todo-items t)
+
+  (setq org-agenda-files '("~/roam"))
+  (setq org-extend-today-until 6)
+  (setq org-agenda-span 10
+        org-agenda-start-on-weekday nil
+        org-agenda-start-day "-5d")
+  (setq org-habit-show-habits-only-for-today nil)
   (setq org-roam-dailies-capture-templates
         `(("d" "daily" plain (function org-roam-capture--get-point) ""
            :head ,(concat
@@ -48,7 +78,48 @@
              )
            :immediate-finish t
            :file-name "%<%Y-%m-%d>"
-           ))))
+           )))
+
+  (setq org-publish-project-alist
+        '(("roam-files"
+           :base-directory "~/roam"
+           :base-extension "org"
+           :publishing-directory "~/roam-publish/html"
+           :publishing-function org-html-publish-to-html
+           )
+          ("roam-res"
+           :base-directory "~/roam/res"
+           :base-extension ".*"
+           :recursive t
+           :publishing-directory "~/roam-publish/html/res"
+           :publishing-function org-publish-attachment
+           )
+          ("roam" :components ("roam-files" "roam-res"))))
+  (defun my/org-roam--backlinks-list-with-content (file)
+    (with-temp-buffer
+      (if-let* ((backlinks (org-roam--get-backlinks file))
+                (grouped-backlinks (--group-by (nth 0 it) backlinks)))
+          (progn
+            (insert (format "\n\n* %d Backlinks\n"
+                            (length backlinks)))
+            (dolist (group grouped-backlinks)
+              (let ((file-from (car group))
+                    (bls (cdr group)))
+                (insert (format "** [[file:%s][%s]]\n"
+                                file-from
+                                (org-roam--get-title-or-slug file-from)))
+                (dolist (backlink bls)
+                  (pcase-let ((`(,file-from _ ,props) backlink))
+                    (insert (s-trim (s-replace "\n" " " (plist-get props :content))))
+                    (insert "\n\n")))))))
+      (buffer-string)))
+  (defun my/org-export-preprocessor (backend)
+    (let ((links (my/org-roam--backlinks-list-with-content (buffer-file-name))))
+      (unless (string= links "")
+        (save-excursion
+          (goto-char (point-max))
+          (insert (concat "\n* Backlinks\n") links)))))
+  (add-hook 'org-export-before-processing-hook 'my/org-export-preprocessor))
 
 (with-eval-after-load 'olivetti
   (setq-default olivetti-body-width 130))
@@ -546,6 +617,7 @@ shows at the top of every directory. In that case, open magit status on the dire
 (key-chord-define evil-normal-state-map "jk" 'keyboard-quit)
 (key-chord-define minibuffer-local-map "jk" 'abort-recursive-edit)
 (key-chord-define-global "ji" 'org-roam-insert)
+(key-chord-define-global "ip" 'gcs-org-paste-image)
 
 
 (key-chord-define ibuffer-mode-map "jk" 'ibuffer-quit)
