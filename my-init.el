@@ -1,6 +1,7 @@
 (setq exec-path (append exec-path '("~/.nvm/versions/node/v13.5.0/bin")))
 (setq undo-tree-enable-undo-in-region nil)
 (setq history-delete-duplicates t)
+(setq frame-resize-pixelwise t)
 
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
@@ -69,6 +70,7 @@
         org-agenda-start-on-weekday nil
         org-agenda-start-day "-5d")
   (setq org-habit-show-habits-only-for-today nil)
+  (setq org-habit-graph-column 80)
   (setq org-roam-dailies-capture-templates
         `(("d" "daily" plain (function org-roam-capture--get-point) ""
            :head ,(concat
@@ -81,11 +83,18 @@
            )))
 
   (setq org-publish-project-alist
-        '(("roam-files"
+        `(("roam-files"
            :base-directory "~/roam"
            :base-extension "org"
            :publishing-directory "~/roam-publish/html"
            :publishing-function org-html-publish-to-html
+           :with-author nil
+           :with-toc nil
+           :html-head-include-scripts nil
+           :html-head-include-default-style nil
+           :html-validation-link nil
+           :html-head-extra ,gcs-org-preamble
+           :preserve-breaks t
            )
           ("roam-res"
            :base-directory "~/roam/res"
@@ -128,8 +137,13 @@
   (defun gcs-clear-terminal ()
     (interactive)
     (let ((inhibit-read-only t)) (term-reset-terminal)))
+  (setq multi-term-program "/usr/local/bin/fish")
   (define-key term-mode-map (kbd "s-K") 'gcs-clear-terminal)
   (define-key term-raw-map (kbd "s-K") 'gcs-clear-terminal))
+
+(use-package docker
+  :ensure t
+  :bind ("C-c d" . docker))
 
 ;; Craziness to enable fira code glyphs from https://github.com/tonsky/FiraCode/wiki/Emacs-instructions.kj
 ; (let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
@@ -595,7 +609,7 @@ shows at the top of every directory. In that case, open magit status on the dire
 
  ;;;;; KEY-CHORD KEYBINDINGS ;;;;;
 (key-chord-mode 1)
-(setq key-chord-two-keys-delay 0.035)
+(setq key-chord-two-keys-delay 0.035) ;; was 0.035
 
 ;; Any prefix key, "\x" can also be triggered with the key chord "jx"
 (mapc (lambda (prefix-command)
@@ -739,3 +753,206 @@ shows at the top of every directory. In that case, open magit status on the dire
 ;; End result: typing is very slow with treemacs open when which-key is on.
 ;; Treemacs is gone now, but I don't use this anyway so leaving it off just in case.
 (which-key-mode -1)
+
+
+(setq gcs-org-preamble "
+<style type='text/css'>
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Input Sans Condensed', 'Helvetica', 'Arial', sans-serif;
+  font-weight: 100;
+  color: #eee;
+  background-color: #222;
+}
+
+#content {
+  max-width: 50em;
+}
+
+a:link,
+a:visited {
+  color: #bbb;
+  font-family: 'Input Sans Condensed', 'Helvetica', 'Arial', sans-serif;
+  font-weight: normal;
+  text-decoration: underline;
+}
+
+a:hover {
+  background-color: #bbb;
+  color: #000;
+}
+
+a:active {
+  color: #f00;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #fff;
+  font-family: 'Input Sans', 'Helvetica', 'Arial', sans-serif;
+  font-weight: normal;
+  line-height: 1.5em;
+  padding-top: 1em;
+}
+
+h4, h5, h6 {
+  font-size: 1em;
+}
+
+h1.title {
+  font-weight: normal;
+  margin: 0 auto;
+  padding: .2em 0;
+  text-align: center;
+}
+
+#preamble {
+  font-family: 'Input Sans Condensed', 'Helvetica', 'Arial', sans-serif;
+  height: 24px;
+  text-align: center;
+}
+
+#preamble a:link, #preamble a:visited {
+  border: none;
+  display: block;
+  height: 24px;
+  line-height: 24px;
+  margin: 0 auto;
+  text-decoration: none;
+}
+
+#preamble a:active, #preamble a:hover {
+  border: none;
+  background-color: transparent;
+  color: #fff;
+}
+
+#postamble {
+  color: #999;
+  font-style: italic;
+  text-align: right;
+}
+
+#postamble a.source-link:link,
+#postamble a.source-link:visited {
+  border-bottom: none;
+  color: #ccc;
+  font-family: 'Input Mono Condensed', monospace;
+  font-size: .7em;
+  font-style: normal;
+  line-height: 24px;
+  text-transform: lowercase;
+  text-decoration: none;
+}
+
+#postamble a.source-link:hover,
+#postamble a.source-link:active {
+  background-color: transparent;
+  color: #0f0;
+}
+
+code {
+  border-top: solid #000 1px;
+  border-bottom: solid #000 1px;
+  padding: 0 .2em;
+}
+
+pre.src, pre.example {
+  background-color: #111;
+  border-top: none;
+  border-bottom: solid #000 1px;
+  border-left: none;
+  border-right: solid #000 1px;
+  box-shadow: none;
+  font-size: .9em;
+  padding: 1em 2em;
+  overflow: auto;
+}
+
+pre.src:before {
+  background-color: transparent;
+  border: none;
+  top: 0;
+  right: 0;
+}
+
+sup {
+  line-height: 0;
+}
+
+hr {
+  border-top: solid 1px #000;
+  border-bottom: solid 1px #333;
+}
+
+li p {
+  margin: 0;
+}
+
+.footpara {
+  margin: 0;
+}
+
+.footnotes {
+  margin-top: 1em;
+}
+
+h2, h3, h4, h5, h6,
+.footnotes {
+  margin: 12px auto;
+}
+
+p, ul {
+  margin: 24px auto;
+}
+
+table {
+  margin: 12px auto;
+}
+
+li ul {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+pre {
+  margin: 0 auto;
+}
+
+div.figure {
+  text-align: center;
+}
+
+div.figure p, div.figure img {
+}
+
+span.tag {
+  background-color: #333;
+}
+
+.done {
+  color: green;
+  font-weight: bold;
+}
+.todo {
+  color: red;
+  font-weight: bold;
+}
+
+.footnotes {
+  font-size: 14px;
+  line-height: 24px;
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.footdef {
+  margin-top: 24px;
+}
+
+.footpara {
+  display: inline;
+}
+</style>
+")
