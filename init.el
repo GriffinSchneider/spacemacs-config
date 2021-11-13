@@ -33,7 +33,8 @@ values."
    ;; List of configuration layers to load.
    dotspacemacs-configuration-layers
 
-   '(csv
+   '(javascript
+     csv
      ;; neotree
      ;; lsp
      typescript
@@ -46,7 +47,7 @@ values."
      ruby
      swift
      games
-     ;; emoji
+     emoji
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
      ;; Uncomment some layer names and press <SPC f e R> (Vim style) or
@@ -86,7 +87,9 @@ values."
    ;; A list of packages that cannot be updated.
    dotspacemacs-frozen-packages '()
    ;; A list of packages that will not be installed and loaded.
-   dotspacemacs-excluded-packages '()
+   dotspacemacs-excluded-packages '(
+                                    evil-escape
+                                    )
    ;; Defines the behaviour of Spacemacs when installing packages.
    ;; Possible values are `used-only', `used-but-keep-unused' and `all'.
    ;; `used-only' installs only explicitly used packages and uninstall any

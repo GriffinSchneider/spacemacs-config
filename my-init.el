@@ -1,3 +1,5 @@
+(load "~/.spacemacs.d/orgthing")
+
 (setq exec-path (append exec-path '("~/.nvm/versions/node/v13.5.0/bin")))
 (setq undo-tree-enable-undo-in-region nil)
 (setq history-delete-duplicates t)
@@ -11,13 +13,22 @@
 (set-face-attribute 'variable-pitch nil :family "Input Sans Condensed")
 (global-visual-line-mode)
 
-(require 'ivy-posframe)
-(setq ivy-posframe-display-functions-alist '((t . ivy-posframe-display-at-point)))
-(ivy-posframe-mode 1)
-(setq ivy-posframe-parameters
-      '((left-fringe . 8)
-        (right-fringe . 8)))
-(setq ivy-posframe-border-width 10)
+;; (require 'ivy-posframe)
+;; (setq ivy-posframe-display-functions-alist '((t . ivy-posframe-display-at-point)))
+;; (ivy-posframe-mode 1)
+;; (setq ivy-posframe-parameters
+;;       '((left-fringe . 1)
+;;         ))
+;; (setq ivy-posframe-border-width 10)
+
+;; Disables smartparens while still keeping it around for Spacemacs to use
+;; Also does not disable it for {} which I actually like it completing
+(eval-after-load 'smartparens
+  '(progn
+     (sp-pair "(" nil :actions :rem)
+     (sp-pair "[" nil :actions :rem)
+     (sp-pair "'" nil :actions :rem)
+     (sp-pair "\"" nil :actions :rem)))
 
 (use-package adaptive-wrap
   :config (add-hook 'visual-line-mode-hook #'adaptive-wrap-prefix-mode))
@@ -44,11 +55,16 @@
       (newline-and-indent)
       (org-insert-link nil (concat "file:" image-file) nil)
       (org-display-inline-images)))
+
   (set-face-attribute 'org-drawer nil :height 0.5)
   (set-face-attribute 'org-table nil :inherit 'fixed-pitch)
+
   (defun gcs-org-mode-hook ()
     (olivetti-mode 1))
   (add-hook 'org-mode-hook 'gcs-org-mode-hook)
+
+  (setq org-startup-folded nil)
+  (setq org-adapt-indentation nil)
 
   (defun gcs-org-show-notification-handler (msg)
     (ns-do-applescript (concat "display notification \"" msg "\" with title \"Org Notification\" sound name \"Basso\"")))
@@ -62,7 +78,7 @@
   (setq org-modules '(org-habit ol-eww ol-docview))
   (setq org-hide-emphasis-markers t)
   (setq org-hide-leading-stars t)
-  (setq org-superstar-special-todo-items t)
+  (setq org-superstar-special-todo-items nil)
 
   (setq org-agenda-files '("~/roam"))
   (setq org-extend-today-until 6)
@@ -75,12 +91,23 @@
         `(("d" "daily" plain (function org-roam-capture--get-point) ""
            :head ,(concat
              "* %<%Y-%m-%d>\n"
-             " <[[file:%(format-time-string \"%Y-%m-%d\" (time-add (* -1 86400) (s--aget org-roam-capture--info 'time))).org][yesterday]]>"
+             "<[[file:%(format-time-string \"%Y-%m-%d\" (time-add (* -1 86400) (s--aget org-roam-capture--info 'time))).org][yesterday]]>"
              " <[[file:%(format-time-string \"%Y-%m-%d\" (time-add (*  1 86400) (s--aget org-roam-capture--info 'time))).org][tomorrow]]>\n"
              )
            :immediate-finish t
            :file-name "%<%Y-%m-%d>"
            )))
+
+  ;; (require 'org-crypt)
+  ;; (require 'epa-file)
+  ;; (setq epg-gpg-program  "/usr/local/bin/gpg")
+  ;; (epa-file-enable)
+  ;; (org-crypt-use-before-save-magic)
+  ;; (setq org-tags-exclude-from-inheritance (quote ("crypt")))
+  ;; (setq org-crypt-key nil)
+
+  (setq org-tags-column -100)
+  (setq org-tag-alist '(("personal" . ?p)))
 
   (setq org-publish-project-alist
         `(("roam-files"
@@ -140,6 +167,10 @@
   (setq multi-term-program "/usr/local/bin/fish")
   (define-key term-mode-map (kbd "s-K") 'gcs-clear-terminal)
   (define-key term-raw-map (kbd "s-K") 'gcs-clear-terminal))
+(with-eval-after-load 'vterm
+  (evil-set-initial-state 'vterm-mode 'emacs)
+  (define-key vterm-mode-map (kbd "s-k") 'vterm-clear)
+  (setq vterm-shell "/usr/local/bin/fish"))
 
 (use-package docker
   :ensure t
@@ -397,6 +428,21 @@ shows at the top of every directory. In that case, open magit status on the dire
  "s-J" (neotree-show)
 
  "s-C-M-T" tetris
+
+ ;; New Karabiner-based key chords
+ "C-M-s-f" spacemacs/helm-find-files
+ "C-M-s-v" helm-mini
+ "C-M-s-x" helm-M-x
+ "C-M-s-d" helm-projectile-find-file
+ "C-M-s-l" gcs-go-to-definition
+ "C-M-s-g" magit-status
+ "C-M-s-a" helm-projectile-ag
+ "C-M-s-:" gcs-eval-dwim
+ "C-M-s-!" delete-other-windows
+ "C-M-s-@" split-window-vertically
+ "C-M-s-#" split-window-horizontally
+ "C-M-s-$" balance-windows
+ "C-M-s-)" gcs-kill-buffer-command
 )
 
  ;;;;; EVIL STATE MAP KEYS ;;;;;
@@ -607,50 +653,50 @@ shows at the top of every directory. In that case, open magit status on the dire
 
 
 
- ;;;;; KEY-CHORD KEYBINDINGS ;;;;;
-(key-chord-mode 1)
-(setq key-chord-two-keys-delay 0.035) ;; was 0.035
+;;;;; KEY-CHORD KEYBINDINGS ;;;;;
+;; (key-chord-mode 1)
+;; (setq key-chord-two-keys-delay 0.035) ;; was 0.035
 
-;; Any prefix key, "\x" can also be triggered with the key chord "jx"
-(mapc (lambda (prefix-command)
-        (let* ((key-string (first prefix-command))
-               (key (aref key-string 0)))
-          (when (and (numberp key) (<= key 126) (>= key 32)
-                     (not (equal key-string "j"))
-                     (not (equal key-string "k")))
-            (key-chord-define-global (vector (aref "j" 0) key) (second prefix-command)))))
-      gcs-prefix-key-commands)
+;; ;; Any prefix key, "\x" can also be triggered with the key chord "jx"
+;; (mapc (lambda (prefix-command)
+;;         (let* ((key-string (first prefix-command))
+;;                (key (aref key-string 0)))
+;;           (when (and (numberp key) (<= key 126) (>= key 32)
+;;                      (not (equal key-string "j"))
+;;                      (not (equal key-string "k")))
+;;             (key-chord-define-global (vector (aref "j" 0) key) (second prefix-command)))))
+;;       gcs-prefix-key-commands)
 
-                                        ; (key-chord-define-global "jl" 'gcs-helm-dwim)
+;;                                         ; (key-chord-define-global "jl" 'gcs-helm-dwim)
 
-;; Numbers for window splitting
-(key-chord-define-global "89" 'split-window-vertically)
-(key-chord-define-global "78" 'split-window-horizontally)
+;; ;; Numbers for window splitting
+;; (key-chord-define-global "89" 'split-window-vertically)
+;; (key-chord-define-global "78" 'split-window-horizontally)
 
-;; First fingers column
-(key-chord-define evil-normal-state-map "jk" 'keyboard-quit)
-(key-chord-define minibuffer-local-map "jk" 'abort-recursive-edit)
-(key-chord-define-global "ji" 'org-roam-insert)
-(key-chord-define-global "ip" 'gcs-org-paste-image)
+;; ;; First fingers column
+;; (key-chord-define evil-normal-state-map "jk" 'keyboard-quit)
+;; (key-chord-define minibuffer-local-map "jk" 'abort-recursive-edit)
+;; (key-chord-define-global "ji" 'org-roam-insert)
+;; (key-chord-define-global "ip" 'gcs-org-paste-image)
 
 
-(key-chord-define ibuffer-mode-map "jk" 'ibuffer-quit)
-(key-chord-define-global "m," 'helm-M-x)
+;; (key-chord-define ibuffer-mode-map "jk" 'ibuffer-quit)
+;; (key-chord-define-global "m," 'helm-M-x)
 
-;; K + o or . for killing buffer or window
-(key-chord-define-global "k." 'delete-window)
-(key-chord-define-global "ko" 'gcs-kill-buffer-command)
+;; ;; K + o or . for killing buffer or window
+;; (key-chord-define-global "k." 'delete-window)
+;; (key-chord-define-global "ko" 'gcs-kill-buffer-command)
 
-;; H-chords for help
-(key-chord-define-global "hf" 'describe-function)
-(key-chord-define-global "hv" 'describe-variable)
-(key-chord-define-global "hk" 'describe-key)
+;; ;; H-chords for help
+;; (key-chord-define-global "hf" 'describe-function)
+;; (key-chord-define-global "hv" 'describe-variable)
+;; (key-chord-define-global "hk" 'describe-key)
 
-;; K + u or m for moving by half-screen
-(key-chord-define-global "ku" 'gcs-smooth-scroll-up-half-screen)
-(key-chord-define-global "km" 'gcs-smooth-scroll-down-half-screen)
+;; ;; K + u or m for moving by half-screen
+;; (key-chord-define-global "ku" 'gcs-smooth-scroll-up-half-screen)
+;; (key-chord-define-global "km" 'gcs-smooth-scroll-down-half-screen)
 
-(key-chord-define-global "kg" 'evil-goto-line)
+;; (key-chord-define-global "kg" 'evil-goto-line)
 
 ;; Semicolon chords for evaluation
 (defun gcs-eval-dwim ()
@@ -660,9 +706,9 @@ shows at the top of every directory. In that case, open magit status on the dire
     (call-interactively 'eval-region)
     (message "eval-ed.")))
 
-(key-chord-define-global "j;" 'gcs-eval-dwim)
-(key-chord-define-global "k;" 'eval-defun)
-(key-chord-define-global "l;" 'eval-expression)
+;; (key-chord-define-global "j;" 'gcs-eval-dwim)
+;; (key-chord-define-global "k;" 'eval-defun)
+;; (key-chord-define-global "l;" 'eval-expression)
 
 
 (defmacro gcs-quit-and-run (body &rest args)
@@ -753,206 +799,3 @@ shows at the top of every directory. In that case, open magit status on the dire
 ;; End result: typing is very slow with treemacs open when which-key is on.
 ;; Treemacs is gone now, but I don't use this anyway so leaving it off just in case.
 (which-key-mode -1)
-
-
-(setq gcs-org-preamble "
-<style type='text/css'>
-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: 'Input Sans Condensed', 'Helvetica', 'Arial', sans-serif;
-  font-weight: 100;
-  color: #eee;
-  background-color: #222;
-}
-
-#content {
-  max-width: 50em;
-}
-
-a:link,
-a:visited {
-  color: #bbb;
-  font-family: 'Input Sans Condensed', 'Helvetica', 'Arial', sans-serif;
-  font-weight: normal;
-  text-decoration: underline;
-}
-
-a:hover {
-  background-color: #bbb;
-  color: #000;
-}
-
-a:active {
-  color: #f00;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  color: #fff;
-  font-family: 'Input Sans', 'Helvetica', 'Arial', sans-serif;
-  font-weight: normal;
-  line-height: 1.5em;
-  padding-top: 1em;
-}
-
-h4, h5, h6 {
-  font-size: 1em;
-}
-
-h1.title {
-  font-weight: normal;
-  margin: 0 auto;
-  padding: .2em 0;
-  text-align: center;
-}
-
-#preamble {
-  font-family: 'Input Sans Condensed', 'Helvetica', 'Arial', sans-serif;
-  height: 24px;
-  text-align: center;
-}
-
-#preamble a:link, #preamble a:visited {
-  border: none;
-  display: block;
-  height: 24px;
-  line-height: 24px;
-  margin: 0 auto;
-  text-decoration: none;
-}
-
-#preamble a:active, #preamble a:hover {
-  border: none;
-  background-color: transparent;
-  color: #fff;
-}
-
-#postamble {
-  color: #999;
-  font-style: italic;
-  text-align: right;
-}
-
-#postamble a.source-link:link,
-#postamble a.source-link:visited {
-  border-bottom: none;
-  color: #ccc;
-  font-family: 'Input Mono Condensed', monospace;
-  font-size: .7em;
-  font-style: normal;
-  line-height: 24px;
-  text-transform: lowercase;
-  text-decoration: none;
-}
-
-#postamble a.source-link:hover,
-#postamble a.source-link:active {
-  background-color: transparent;
-  color: #0f0;
-}
-
-code {
-  border-top: solid #000 1px;
-  border-bottom: solid #000 1px;
-  padding: 0 .2em;
-}
-
-pre.src, pre.example {
-  background-color: #111;
-  border-top: none;
-  border-bottom: solid #000 1px;
-  border-left: none;
-  border-right: solid #000 1px;
-  box-shadow: none;
-  font-size: .9em;
-  padding: 1em 2em;
-  overflow: auto;
-}
-
-pre.src:before {
-  background-color: transparent;
-  border: none;
-  top: 0;
-  right: 0;
-}
-
-sup {
-  line-height: 0;
-}
-
-hr {
-  border-top: solid 1px #000;
-  border-bottom: solid 1px #333;
-}
-
-li p {
-  margin: 0;
-}
-
-.footpara {
-  margin: 0;
-}
-
-.footnotes {
-  margin-top: 1em;
-}
-
-h2, h3, h4, h5, h6,
-.footnotes {
-  margin: 12px auto;
-}
-
-p, ul {
-  margin: 24px auto;
-}
-
-table {
-  margin: 12px auto;
-}
-
-li ul {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-pre {
-  margin: 0 auto;
-}
-
-div.figure {
-  text-align: center;
-}
-
-div.figure p, div.figure img {
-}
-
-span.tag {
-  background-color: #333;
-}
-
-.done {
-  color: green;
-  font-weight: bold;
-}
-.todo {
-  color: red;
-  font-weight: bold;
-}
-
-.footnotes {
-  font-size: 14px;
-  line-height: 24px;
-  margin-top: 24px;
-  padding: 24px;
-}
-
-.footdef {
-  margin-top: 24px;
-}
-
-.footpara {
-  display: inline;
-}
-</style>
-")
